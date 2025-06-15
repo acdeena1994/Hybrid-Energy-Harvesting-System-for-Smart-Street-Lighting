@@ -1,0 +1,225 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <ArduinoJson.h> // Include ArduinoJson library for JSON handling
+
+// WiFi credentials
+const char* ssid = "ACD";
+const char* password = "pass1234";
+
+// Flask server URL
+const char* serverUrl = "http://192.168.0.106:5000/data";
+
+// Pin definitions
+#define LDR_PIN 35
+#define PIR_PIN 23
+#define RELAY_PIN 5
+#define LED_PIN 4
+#define CURRENT_SENSOR_PIN 34
+#define BATTERY_VOLTAGE_PIN 32
+#define SOLAR_VOLTAGE_PIN 33
+
+// Constants
+const float REF_VOLTAGE = 3.3; // ESP32 reference voltage
+const int MAX_ADC = 4095; // ESP32 ADC resolution (12-bit)
+const float VOLTAGE_DIVIDER_FACTOR = 2.0; // Due to 100kΩ + 100kΩ resistors
+
+// ACS712 (Current Sensor) Constants
+const float ACS712_SENSITIVITY = 185.0; // mV/A for 5A version
+const float ACS712_REF_VOLTAGE = 2.5; // Half of 5V
+
+// Task handles
+TaskHandle_t Task1;
+TaskHandle_t Task2;
+
+// Sensor data structure
+struct SensorData {
+    int ldrValue;
+    int pirValue;
+    float current;
+    float batteryVoltage;
+    int batteryLevel;
+    float solarVoltage;
+};
+
+SensorData sensorData;
+
+// Relay control variables
+unsigned long relayStartTime = 0;
+bool relayActive = false;
+
+// Function prototypes
+void readBatteryVoltage();
+void readSolarVoltage();
+float readCurrent();
+void sensorTask(void* pvParameters);
+void httpTask(void* pvParameters);
+void checkWiFiConnection();
+String createJsonPayload();
+
+void setup() {
+    Serial.begin(115200);
+
+    // Initialize pins
+    pinMode(LDR_PIN, INPUT);
+    pinMode(PIR_PIN, INPUT);
+    pinMode(RELAY_PIN, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
+    pinMode(CURRENT_SENSOR_PIN, INPUT);
+    pinMode(BATTERY_VOLTAGE_PIN, INPUT);
+    pinMode(SOLAR_VOLTAGE_PIN, INPUT);
+
+    // Connect to WiFi
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+        Serial.println("Connecting to WiFi...");
+    }
+    Serial.println("Connected to WiFi");
+
+    // Create tasks
+    xTaskCreatePinnedToCore(sensorTask, "SensorTask", 10000, NULL, 1, &Task1, 0);
+    xTaskCreatePinnedToCore(httpTask, "HttpTask", 10000, NULL, 1, &Task2, 1);
+}
+
+void loop() {
+    // Empty loop as tasks handle the functionality
+}
+
+// Read Battery Voltage & Percentage
+void readBatteryVoltage() {
+    int adcValue = analogRead(BATTERY_VOLTAGE_PIN);
+    float voltage = (adcValue / (float)MAX_ADC) * REF_VOLTAGE * VOLTAGE_DIVIDER_FACTOR;
+    int level = map(voltage * 100, 200, 370, 0, 100); // Convert voltage to percentage
+    level = constrain(level, 0, 100);
+
+    Serial.print("Battery Voltage: ");
+    Serial.print(voltage);
+    Serial.print("V, Level: ");
+    Serial.print(level);
+    Serial.println("%");
+
+    sensorData.batteryVoltage = voltage;
+    sensorData.batteryLevel = level;
+}
+
+// Read Solar Voltage
+void readSolarVoltage() {
+    int adcValue = analogRead(SOLAR_VOLTAGE_PIN);
+    float voltage = (adcValue / (float)MAX_ADC) * REF_VOLTAGE * VOLTAGE_DIVIDER_FACTOR;
+    Serial.print("Solar Voltage: ");
+    Serial.print(voltage, 2);
+    Serial.println("V");
+
+    sensorData.solarVoltage = voltage;
+}
+
+// Read Current from ACS712
+float readCurrent() {
+    int adcValue = analogRead(CURRENT_SENSOR_PIN);
+    float voltage = (adcValue / (float)MAX_ADC) * REF_VOLTAGE;
+    float current = (voltage - ACS712_REF_VOLTAGE) * 1000 / ACS712_SENSITIVITY;
+    Serial.print("Current: ");
+    Serial.print(current);
+    Serial.println("A");
+
+    return current;
+}
+
+// Sensor task to read all values
+void sensorTask(void* pvParameters) {
+    while (1) {
+        // Read sensor values
+        sensorData.ldrValue = analogRead(LDR_PIN);
+        sensorData.pirValue = digitalRead(PIR_PIN);
+        sensorData.current = readCurrent();
+        readBatteryVoltage();
+        readSolarVoltage();
+
+        Serial.print("LDR: ");
+        Serial.println(sensorData.ldrValue);
+
+        // Control LED based on LDR value
+        if (sensorData.ldrValue <= 2000) { // Low LDR value (Dark)
+            digitalWrite(LED_PIN, HIGH); // LED ON
+            Serial.println("LED ON");
+
+            // Relay control logic
+            if (sensorData.pirValue == HIGH && !relayActive) {
+                digitalWrite(RELAY_PIN, LOW); // Relay ON
+                relayActive = true;
+                relayStartTime = millis();
+                Serial.println("Relay ON (PIR triggered)");
+            }
+        } else { // High LDR value (Bright)
+            digitalWrite(LED_PIN, LOW); // LED OFF
+            digitalWrite(RELAY_PIN, HIGH); // Ensure Relay OFF
+            relayActive = false;
+            Serial.println("LED OFF and Relay OFF");
+        }
+
+        // Ensure relay turns off after 5 seconds
+        if (relayActive && (millis() - relayStartTime >= 5000)) {
+            digitalWrite(RELAY_PIN, HIGH); // Relay OFF
+            relayActive = false;
+            Serial.println("Relay OFF (Timeout)");
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1000)); // Delay for 1 second
+    }
+}
+
+// HTTP Task for sending data to Flask server
+void httpTask(void* pvParameters) {
+    while (1) {
+        checkWiFiConnection(); // Ensure WiFi is connected
+
+        if (WiFi.status() == WL_CONNECTED) {
+            HTTPClient http;
+            http.begin(serverUrl);
+            http.addHeader("Content-Type", "application/json");
+
+            String jsonData = createJsonPayload();
+            int httpResponseCode = http.POST(jsonData);
+
+            if (httpResponseCode > 0) {
+                Serial.println("Data sent to server");
+            } else {
+                Serial.println("Error sending data");
+            }
+
+            http.end();
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(5000)); // Delay for 5 seconds
+    }
+}
+
+// Check WiFi connection and reconnect if disconnected
+void checkWiFiConnection() {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi disconnected. Reconnecting...");
+        WiFi.begin(ssid, password);
+        while (WiFi.status() != WL_CONNECTED) {
+            delay(1000);
+            Serial.println("Connecting to WiFi...");
+        }
+        Serial.println("Reconnected to WiFi");
+    }
+}
+
+// Create JSON payload using ArduinoJson
+String createJsonPayload() {
+    StaticJsonDocument<200> doc;
+    doc["ldr"] = sensorData.ldrValue;
+    doc["pir"] = sensorData.pirValue;
+    doc["current"] = sensorData.current;
+    doc["battery_voltage"] = sensorData.batteryVoltage;
+    doc["battery_level"] = sensorData.batteryLevel;
+    doc["solar_voltage"] = sensorData.solarVoltage;
+
+    String jsonData;
+    serializeJson(doc, jsonData);
+    return jsonData;
+}
