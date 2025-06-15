@@ -80,21 +80,4 @@ The system comprises 4 core subsystems:
 
 ---
 
-## 📷 Visual Demo
-
-> *To be added:* Prototype photos, circuit diagrams, dashboard screenshots, and OLED display animations.
-
----
-
-## 📁 Folder Structure
-
-HybridEnergyStreetLighting/
-│
-├── firmware/ # Arduino code for ESP32
-├── server/ # Flask server code
-│ ├── static/ # CSS, JS
-│ └── templates/ # HTML for dashboard
-├── database/ # SQL schema and scripts
-├── data_exports/ # Excel 
-└── README.md # This file
 
