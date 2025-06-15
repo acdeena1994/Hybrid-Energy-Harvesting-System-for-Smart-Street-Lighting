@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hextech Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS Code (unchanged) */
+        :root {
+            /* Light Mode Variables */
+            --bg-primary: #f2f2f7;
+            --bg-secondary: #ffffff;
+            --text-primary: #1c1c1e;
+            --text-secondary: #6e6e73;
+            --accent-primary: #007aff;
+            --accent-secondary: #5ac8fa;
+            --border-color: #e5e5ea;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --card-gradient-start: #ffffff;
+            --card-gradient-end: #f5f5f7;
+            --success-color: #34c759;
+            --warning-color: #ff9500;
+            --danger-color: #ff3b30;
+            --chart-grid-color: #e0e0e0;
+        }
+
+        /* Dark Mode Variables */
+        .dark-mode {
+            --bg-primary: #1c1c1e;
+            --bg-secondary: #2c2c2e;
+            --text-primary: #ffffff;
+            --text-secondary: #98989f;
+            --accent-primary: #0a84ff;
+            --accent-secondary: #64d2ff;
+            --border-color: #38383a;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --card-gradient-start: #2c2c2e;
+            --card-gradient-end: #252527;
+            --chart-grid-color: #38383a;
+        }
+
+        /* Night Mode (LDR based) */
+        .night-mode {
+            --bg-primary: #000000;
+            --bg-secondary: #1c1c1e;
+            --card-gradient-start: #1c1c1e;
+            --card-gradient-end: #121214;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .app-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        .icon-btn {
+            background: var(--bg-secondary);
+            border: none;
+            color: var(--text-primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            transition: all 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow-color);
+        }
+
+        .icon-btn:active {
+            transform: translateY(0);
+        }
+
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sensor-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .sensor-card {
+            background: linear-gradient(145deg, var(--card-gradient-start), var(--card-gradient-end));
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            display: flex;
+            align-items: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .sensor-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px var(--shadow-color);
+        }
+
+        .card-icon {
+            background-color: var(--accent-primary);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+
+        .card-icon i {
+            font-size: 24px;
+        }
+
+        .card-info {
+            flex: 1;
+        }
+
+        .card-info h3 {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .card-details {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .battery-level {
+            width: 100%;
+            height: 8px;
+            background-color: var(--border-color);
+            border-radius: 4px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+
+        .battery-level-inner {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
+        /* Different battery level colors */
+        .battery-high {
+            background-color: var(--success-color);
+        }
+
+        .battery-medium {
+            background-color: var(--warning-color);
+        }
+
+        .battery-low {
+            background-color: var(--danger-color);
+        }
+
+        .chart-container {
+            background-color: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            margin-top: 20px;
+            height: 400px; /* Fixed height for chart */
+        }
+
+        .chart-container h3 {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+
+        canvas {
+            width: 100% !important;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-content {
+            background-color: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        #cancelResetBtn {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        #confirmResetBtn {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .motion-detected {
+            animation: pulse 1s infinite;
+            background-color: rgba(255, 59, 48, 0.1);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .app-header h1 {
+                font-size: 20px;
+            }
+            
+            .sensor-cards {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+            
+            .chart-container {
+                height: 350px;
+            }
+            
+            .sensor-card {
+                padding: 15px;
+            }
+            
+            .card-icon {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .card-icon i {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .app-container {
+                padding: 15px 10px;
+            }
+            
+            .sensor-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-controls {
+                gap: 10px;
+            }
+            
+            .icon-btn {
+                width: 35px;
+                height: 35px;
+            }
+            
+            .chart-container {
+                height: 300px;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body class="light-mode">
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Sensor Dashboard</h1>
+            <div class="header-controls">
+                <button id="downloadBtn" class="icon-btn">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button id="resetBtn" class="icon-btn">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <button id="themeToggle" class="icon-btn">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <div class="sensor-cards">
+                <div class="sensor-card" id="batteryCard">
+                    <div class="card-icon">
+                        <i class="fas fa-battery-half"></i>
+                    </div>
+                    <div class="card-info">
+                        <h3>Battery</h3>
+                        <div class="card-details">
+                            <p id="batteryVoltage">-- V</p>
+                            <div class="battery-level">
+                                <div class="battery-level-inner" id="batteryLevelIndicator" style="width: 0%"></div>
+                            </div>
+                            <p id="batteryPercentage">--%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sensor-card" id="solarCard">
+                    <div class="card-icon">
+                        <i class="fas fa-sun"></i>
+                    </div>
+                    <div class="card-info">
+                        <h3>Hybrid Energy</h3>
+                        <div class="card-details">
+                            <p id="solarVoltage">-- V</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sensor-card" id="currentCard">
+                    <div class="card-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="card-info">
+                        <h3>Current</h3>
+                        <div class="card-details">
+                            <p id="currentValue">-- mA</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sensor-card" id="ldrCard">
+                    <div class="card-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <div class="card-info">
+                        <h3>Light Level</h3>
+                        <div class="card-details">
+                            <p id="ldrValue">--</p>
+                            <p id="dayNightStatus">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sensor-card" id="pirCard">
+                    <div class="card-icon">
+                        <i class="fas fa-walking"></i>
+                    </div>
+                    <div class="card-info">
+                        <h3>Motion</h3>
+                        <div class="card-details">
+                            <p id="pirStatus">No Motion</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sensor-card" id="lastUpdateCard">
+                    <div class="card-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="card-info">
+                        <h3>Last Update</h3>
+                        <div class="card-details">
+                            <p id="lastUpdateTime">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Sensor Data History</h3>
+                <canvas id="combinedChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="resetModal" class="modal">
+        <div class="modal-content">
+            <h2>Confirm Reset</h2>
+            <p>Are you sure you want to clear all sensor data? This action cannot be undone.</p>
+            <div class="modal-buttons">
+                <button id="cancelResetBtn">Cancel</button>
+                <button id="confirmResetBtn">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript Code
+        // DOM Elements
+        const themeToggleBtn = document.getElementById('themeToggle');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const resetModal = document.getElementById('resetModal');
+        const confirmResetBtn = document.getElementById('confirmResetBtn');
+        const cancelResetBtn = document.getElementById('cancelResetBtn');
+
+        // Sensor value elements
+        const batteryVoltage = document.getElementById('batteryVoltage');
+        const batteryPercentage = document.getElementById('batteryPercentage');
+        const batteryLevelIndicator = document.getElementById('batteryLevelIndicator');
+        const solarVoltage = document.getElementById('solarVoltage');
+        const currentValue = document.getElementById('currentValue');
+        const ldrValue = document.getElementById('ldrValue');
+        const dayNightStatus = document.getElementById('dayNightStatus');
+        const pirStatus = document.getElementById('pirStatus');
+        const pirCard = document.getElementById('pirCard');
+        const lastUpdateTime = document.getElementById('lastUpdateTime');
+
+        // Chart references
+        let combinedChart;
+
+        // App State
+        const state = {
+            theme: 'light',
+            updateInterval: null,
+            chartData: {
+                timestamps: [],
+                batteryVoltages: [],
+                batteryLevels: [],
+                solarVoltages: [],
+                currents: [],
+                ldrValues: []
+            }
+        };
+
+        // Initialize the dashboard
+        function initDashboard() {
+            setupEventListeners();
+            setupChart();
+            fetchData();
+            
+            // Set up regular data polling every 5 seconds
+            state.updateInterval = setInterval(fetchData, 5000);
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            // Theme toggle
+            themeToggleBtn.addEventListener('click', toggleTheme);
+            
+            // Download button
+            downloadBtn.addEventListener('click', downloadData);
+            
+            // Reset button and modal
+            resetBtn.addEventListener('click', showResetModal);
+            confirmResetBtn.addEventListener('click', resetData);
+            cancelResetBtn.addEventListener('click', hideResetModal);
+            window.addEventListener('click', (e) => {
+                if (e.target === resetModal) {
+                    hideResetModal();
+                }
+            });
+        }
+
+        // Setup combined chart with Chart.js
+        function setupChart() {
+            const ctx = document.getElementById('combinedChart').getContext('2d');
+            combinedChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Battery Voltage (V)',
+                            data: [],
+                            borderColor: '#007aff',
+                            backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'voltage'
+                        },
+                        {
+                            label: 'Solar Voltage (V)',
+                            data: [],
+                            borderColor: '#ff9500',
+                            backgroundColor: 'rgba(255, 149, 0, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'voltage'
+                        },
+                        {
+                            label: 'Current (mA)',
+                            data: [],
+                            borderColor: '#ff3b30',
+                            backgroundColor: 'rgba(255, 59, 48, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'current'
+                        },
+                        {
+                            label: 'Light Level',
+                            data: [],
+                            borderColor: '#5ac8fa',
+                            backgroundColor: 'rgba(90, 200, 250, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'light'
+                        },
+                        {
+                            label: 'Battery Level (%)',
+                            data: [],
+                            borderColor: '#34c759',
+                            backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'percentage'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: getComputedStyle(document.body).getPropertyValue('--text-primary'),
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: getComputedStyle(document.body).getPropertyValue('--chart-grid-color')
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                            }
+                        },
+                        voltage: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Voltage (V)',
+                                color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                            },
+                            grid: {
+                                color: getComputedStyle(document.body).getPropertyValue('--chart-grid-color')
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                            },
+                            min: 0
+                        },
+                        current: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Current (mA)',
+                                color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                            },
+                            min: 0
+                        },
+                        light: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Light Level',
+                                color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                            },
+                            min: 0,
+                            max: 1024
+                        },
+                        percentage: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Battery %',
+                                color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.body).getPropertyValue('--text-secondary')
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fetch data from the server
+        function fetchData() {
+            fetch('/get_data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && data.latest) {
+                        updateDashboard(data.latest);
+                        updateChart(data.records);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        }
+
+        // Update the dashboard with the latest data
+        function updateDashboard(data) {
+            // Validate and format the timestamp
+            const timestamp = new Date(data.timestamp); // Parse the timestamp
+            if (isNaN(timestamp)) {
+                console.error("Invalid timestamp:", data.timestamp);
+                lastUpdateTime.textContent = "--";
+            } else {
+                lastUpdateTime.textContent = timestamp.toLocaleString(); // Display date and time
+            }
+
+            // Update battery information
+            batteryVoltage.textContent = `${data.battery_voltage.toFixed(2)} V`;
+            batteryPercentage.textContent = `${data.battery_level.toFixed(1)}%`;
+            
+            const batteryLevel = data.battery_level;
+            batteryLevelIndicator.style.width = `${batteryLevel}%`;
+            
+            // Set the appropriate color based on the battery level
+            if (batteryLevel > 70) {
+                batteryLevelIndicator.className = 'battery-level-inner battery-high';
+            } else if (batteryLevel > 30) {
+                batteryLevelIndicator.className = 'battery-level-inner battery-medium';
+            } else {
+                batteryLevelIndicator.className = 'battery-level-inner battery-low';
+            }
+            
+            // Update solar voltage
+            solarVoltage.textContent = `${data.solar_voltage.toFixed(2)} V`;
+            
+            // Update current
+            currentValue.textContent = `${data.current.toFixed(2)} mA`;
+            
+            // Update LDR and set day/night mode
+            ldrValue.textContent = data.ldr.toFixed(0);
+            
+            const isDaylight = data.ldr > 500; // Threshold for day/night
+            dayNightStatus.textContent = isDaylight ? 'Daylight' : 'Night';
+            
+            // Set day/night theme based on LDR
+            if (!isDaylight && state.theme === 'dark') {
+                document.body.classList.add('night-mode');
+            } else {
+                document.body.classList.remove('night-mode');
+            }
+            
+            // Update PIR motion sensor
+            const motionDetected = data.pir === 1;
+            pirStatus.textContent = motionDetected ? 'Motion Detected' : 'No Motion';
+            
+            if (motionDetected) {
+                pirCard.classList.add('motion-detected');
+            } else {
+                pirCard.classList.remove('motion-detected');
+            }
+        }
+
+        // Update the combined chart with historical data
+        function updateChart(records) {
+            const timestamps = records.map(record => {
+                const timestamp = new Date(record.timestamp); // Parse the timestamp
+                if (isNaN(timestamp)) {
+                    console.error("Invalid timestamp in record:", record.timestamp);
+                    return "Invalid Date";
+                }
+                return timestamp.toLocaleString(); // Format as date and time
+            });
+
+            const batteryVoltages = records.map(record => record.battery_voltage);
+            const batteryLevels = records.map(record => record.battery_level);
+            const solarVoltages = records.map(record => record.solar_voltage);
+            const currents = records.map(record => record.current);
+            const ldrValues = records.map(record => record.ldr);
+
+            // Update chart data
+            combinedChart.data.labels = timestamps;
+            combinedChart.data.datasets[0].data = batteryVoltages;
+            combinedChart.data.datasets[1].data = solarVoltages;
+            combinedChart.data.datasets[2].data = currents;
+            combinedChart.data.datasets[3].data = ldrValues;
+            combinedChart.data.datasets[4].data = batteryLevels;
+            
+            // Save data for download
+            state.chartData.timestamps = timestamps;
+            state.chartData.batteryVoltages = batteryVoltages;
+            state.chartData.batteryLevels = batteryLevels;
+            state.chartData.solarVoltages = solarVoltages;
+            state.chartData.currents = currents;
+            state.chartData.ldrValues = ldrValues;
+            
+            combinedChart.update();
+        }
+
+        // Toggle between light and dark mode
+        function toggleTheme() {
+            if (state.theme === 'light') {
+                document.body.classList.add('dark-mode');
+                state.theme = 'dark';
+                themeToggleBtn.innerHTML = '<i class="fas fa-sun"></i>';
+            } else {
+                document.body.classList.remove('dark-mode');
+                state.theme = 'light';
+                themeToggleBtn.innerHTML = '<i class="fas fa-moon"></i>';
+            }
+            
+            // Update chart colors
+            combinedChart.options.scales.x.grid.color = getComputedStyle(document.body).getPropertyValue('--chart-grid-color');
+            combinedChart.options.scales.voltage.grid.color = getComputedStyle(document.body).getPropertyValue('--chart-grid-color');
+            combinedChart.options.plugins.legend.labels.color = getComputedStyle(document.body).getPropertyValue('--text-primary');
+            combinedChart.update();
+        }
+
+        // Show the reset confirmation modal
+        function showResetModal() {
+            resetModal.classList.add('show');
+        }
+
+        // Hide the reset confirmation modal
+        function hideResetModal() {
+            resetModal.classList.remove('show');
+        }
+
+        // Reset all sensor data
+        function resetData() {
+            // Clear chart data
+            state.chartData.timestamps = [];
+            state.chartData.batteryVoltages = [];
+            state.chartData.batteryLevels = [];
+            state.chartData.solarVoltages = [];
+            state.chartData.currents = [];
+            state.chartData.ldrValues = [];
+
+            // Reset chart
+            combinedChart.data.labels = [];
+            combinedChart.data.datasets.forEach(dataset => {
+                dataset.data = [];
+            });
+            combinedChart.update();
+
+            // Reset sensor values
+            batteryVoltage.textContent = '-- V';
+            batteryPercentage.textContent = '--%';
+            batteryLevelIndicator.style.width = '0%';
+            solarVoltage.textContent = '-- V';
+            currentValue.textContent = '-- mA';
+            ldrValue.textContent = '--';
+            dayNightStatus.textContent = '--';
+            pirStatus.textContent = 'No Motion';
+            lastUpdateTime.textContent = '--';
+
+            // Hide the modal
+            hideResetModal();
+        }
+
+        // Download sensor data as a CSV file
+        function downloadData() {
+            // Create CSV header
+            const header = "Timestamp,Battery Voltage (V),Battery Level (%),Solar Voltage (V),Current (mA),Light Level";
+            
+            // Create CSV rows
+            const csvRows = state.chartData.timestamps.map((timestamp, index) => 
+                `${timestamp},${state.chartData.batteryVoltages[index]},${state.chartData.batteryLevels[index]},${state.chartData.solarVoltages[index]},${state.chartData.currents[index]},${state.chartData.ldrValues[index]}`
+            );
+            
+            // Combine header and rows
+            const csvContent = "data:text/csv;charset=utf-8," + header + "\n" + csvRows.join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "sensor_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Initialize the dashboard when the page loads
+        window.onload = initDashboard;
+    </script>
+</body>
+</html>
